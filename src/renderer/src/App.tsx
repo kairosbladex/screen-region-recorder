@@ -85,6 +85,7 @@ export function App() {
 
   const permissionNeedsAction = appInfo?.permission.platform === "darwin" && appInfo.permission.status !== "granted";
   const ffmpegMissing = appInfo?.ffmpeg.available === false;
+  const ffmpegMessage = "导出组件不可用。请重新安装完整版本，或先在本机安装 FFmpeg 后重启应用。";
 
   return (
     <main className="app-shell">
@@ -207,11 +208,7 @@ export function App() {
             ) : null
           }
         />
-        <DiagnosticItem
-          kind={ffmpegMissing ? "warn" : "ok"}
-          title="FFmpeg"
-          text={appInfo?.ffmpeg.message ?? "正在检测 FFmpeg。"}
-        />
+        {ffmpegMissing ? <DiagnosticItem kind="warn" title="导出组件" text={ffmpegMessage} /> : null}
         <DiagnosticItem kind="ok" title="输出目录" text={appInfo?.outputDir ?? "正在准备输出目录。"} />
       </section>
     </main>

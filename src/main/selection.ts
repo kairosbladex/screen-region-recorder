@@ -1,8 +1,10 @@
 import { BrowserWindow, ipcMain, screen } from "electron";
+import { is } from "@electron-toolkit/utils";
 import { join } from "node:path";
 import { buildCaptureRegion, hasUsableSelection, translateOverlayRectToDisplayLocal } from "../shared/coordinates";
 import type { CaptureRegion, SelectionCompletePayload, SelectionResult } from "../shared/types";
 import { toDisplayInfo } from "./display";
+import { loadRenderer } from "./rendererLoader";
 
 interface SelectionSession {
   windows: BrowserWindow[];
@@ -29,7 +31,7 @@ export async function selectRegion(): Promise<SelectionResult> {
     const displays = screen.getAllDisplays();
     const windows = displays.map((display) => {
       const overlay = createOverlayWindow(display);
-      void loadRenderer(overlay, { mode: "selection", displayId: String(display.id) });
+      void loadRenderer(overlay, { mode: "selection", displayId: String(display.id) }, is.dev);
       return overlay;
     });
 
@@ -120,16 +122,4 @@ function createOverlayWindow(display: Electron.Display): BrowserWindow {
   window.focus();
 
   return window;
-}
-
-function loadRenderer(window: BrowserWindow, query: Record<string, string>): Promise<void> {
-  if (process.env.ELECTRON_RENDERER_URL) {
-    const url = new URL(process.env.ELECTRON_RENDERER_URL);
-    for (const [key, value] of Object.entries(query)) {
-      url.searchParams.set(key, value);
-    }
-    return window.loadURL(url.toString());
-  }
-
-  return window.loadFile(join(__dirname, "../renderer/index.html"), { query });
 }

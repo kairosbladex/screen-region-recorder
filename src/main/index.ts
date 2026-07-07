@@ -8,6 +8,7 @@ import type { AppInfo, CaptureSourceInfo, DisplayInfo, ExportRecordingRequest, E
 import { toDisplayInfo } from "./display";
 import { getFfmpegInfo, transcodeRecording } from "./ffmpeg";
 import { getScreenPermissionInfo, openScreenRecordingSettings } from "./permissions";
+import { loadRenderer } from "./rendererLoader";
 import { registerSelectionIpc, selectRegion } from "./selection";
 
 let mainWindow: BrowserWindow | null = null;
@@ -32,7 +33,7 @@ function createMainWindow(): void {
     }
   });
 
-  void loadRenderer(mainWindow, { mode: "app" });
+  void loadRenderer(mainWindow, { mode: "app" }, is.dev);
 
   if (is.dev && process.env.SCREEN_REGION_RECORDER_DEVTOOLS === "1") {
     mainWindow.webContents.openDevTools({ mode: "detach" });
@@ -171,18 +172,6 @@ function getDisplayInfo(displayId: number): DisplayInfo | null {
 
 function getOutputDir(): string {
   return join(app.getPath("downloads"), "ScreenClips");
-}
-
-function loadRenderer(window: BrowserWindow, query: Record<string, string>): Promise<void> {
-  if (process.env.ELECTRON_RENDERER_URL) {
-    const url = new URL(process.env.ELECTRON_RENDERER_URL);
-    for (const [key, value] of Object.entries(query)) {
-      url.searchParams.set(key, value);
-    }
-    return window.loadURL(url.toString());
-  }
-
-  return window.loadFile(join(__dirname, "../renderer/index.html"), { query });
 }
 
 app.whenReady().then(() => {
