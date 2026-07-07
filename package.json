@@ -1,6 +1,6 @@
 {
   "name": "screen-region-recorder",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Desktop screen region recorder for GIF, MP4 and WebM exports.",
   "main": "./out/main/index.js",
   "author": "wangxiaolin",
@@ -39,7 +39,6 @@
     "appId": "local.screen-region-recorder",
     "productName": "Screen Region Recorder",
     "artifactName": "Screen-Region-Recorder-${version}-${os}-${arch}.${ext}",
-    "electronDist": "node_modules/electron/dist",
     "files": [
       "out/**/*",
       "package.json"
