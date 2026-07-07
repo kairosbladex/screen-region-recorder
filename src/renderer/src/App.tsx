@@ -88,9 +88,12 @@ export function App() {
     }
   }
 
-  const permissionNeedsAction = appInfo?.permission.platform === "darwin" && appInfo.permission.status !== "granted";
+  const isMac = appInfo?.permission.platform === "darwin";
+  const permissionNeedsAction = isMac && appInfo.permission.status !== "granted";
   const ffmpegMissing = appInfo?.ffmpeg.available === false;
   const ffmpegMessage = "导出组件不可用。请重新安装完整版本，或先在本机安装 FFmpeg 后重启应用。";
+  const formatLabel: Record<string, string> = { gif: "GIF", mp4: "MP4", webm: "WebM" };
+  const formatHint: Record<string, string> = { gif: "动图，兼容性好", mp4: "通用视频格式", webm: "现代网页格式" };
 
   return (
     <main className="app-shell">
@@ -158,18 +161,24 @@ export function App() {
             <Radio size={16} />
             <span>导出格式</span>
           </div>
-          <div className="segmented-control" aria-label="导出格式">
-            {EXPORT_FORMATS.map((item) => (
-              <button
-                key={item}
-                type="button"
-                className={format === item ? "selected" : ""}
-                onClick={() => setFormat(item)}
-                disabled={busy}
-              >
-                {item.toUpperCase()}
-              </button>
-            ))}
+          <div className="format-selector">
+            <span className="format-value">{formatLabel[format]}</span>
+            <div className="format-segments" role="radiogroup" aria-label="导出格式">
+              {EXPORT_FORMATS.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  role="radio"
+                  aria-checked={format === item}
+                  className={format === item ? "selected" : ""}
+                  onClick={() => setFormat(item)}
+                  disabled={busy}
+                >
+                  {formatLabel[item]}
+                </button>
+              ))}
+            </div>
+            <span className="format-hint">{formatHint[format]}</span>
           </div>
         </div>
       </section>
@@ -204,18 +213,22 @@ export function App() {
       ) : null}
 
       <section className="diagnostics">
-        <DiagnosticItem
-          kind={permissionNeedsAction ? "warn" : "ok"}
-          title="屏幕录制权限"
-          text={appInfo?.permission.message ?? "正在检测权限。"}
-          action={
-            permissionNeedsAction ? (
-              <button type="button" onClick={() => window.screenClip.openScreenSettings()}>
-                打开设置
-              </button>
-            ) : null
-          }
-        />
+        {isMac ? (
+          <DiagnosticItem
+            kind={permissionNeedsAction ? "warn" : "ok"}
+            title="屏幕录制权限"
+            text={appInfo?.permission.message ?? "正在检测权限。"}
+            action={
+              permissionNeedsAction ? (
+                <button type="button" onClick={() => window.screenClip.openScreenSettings()}>
+                  打开设置
+                </button>
+              ) : null
+            }
+          />
+        ) : (
+          <DiagnosticItem kind="ok" title="屏幕录制" text={appInfo?.permission.message ?? "正在检测权限。"} />
+        )}
         {ffmpegMissing ? <DiagnosticItem kind="warn" title="导出组件" text={ffmpegMessage} /> : null}
         <DiagnosticItem kind="ok" title="输出目录" text={appInfo?.outputDir ?? "正在准备输出目录。"} />
       </section>

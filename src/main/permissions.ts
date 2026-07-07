@@ -10,7 +10,7 @@ export function getScreenPermissionInfo(): PermissionInfo {
         platform: process.platform,
         status: "granted",
         canOpenSettings: false,
-        message: "Windows 会在录屏启动时由系统处理屏幕捕获授权，本应用无需打开 macOS 屏幕录制设置。"
+        message: "Windows 由系统处理屏幕捕获授权，无需额外设置。"
       };
     }
 
@@ -18,7 +18,7 @@ export function getScreenPermissionInfo(): PermissionInfo {
       platform: process.platform,
       status: "granted",
       canOpenSettings: false,
-      message: "当前平台不需要单独检测 macOS 屏幕录制权限。"
+      message: "当前平台无需手动授权屏幕录制。"
     };
   }
 

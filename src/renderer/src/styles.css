@@ -235,6 +235,64 @@ button:disabled {
   font-size: 12px;
 }
 
+.format-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.format-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #18202f;
+  text-align: center;
+}
+
+.format-segments {
+  display: flex;
+  border: 1px solid #dce3ee;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f6f8fb;
+}
+
+.format-segments button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: #536176;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 0;
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+
+.format-segments button.selected {
+  background: #244cff;
+  color: #ffffff;
+}
+
+.format-segments button:not(.selected):hover {
+  background: #e8ecf4;
+}
+
+.format-segments button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.format-segments button.selected:disabled {
+  opacity: 0.7;
+}
+
+.format-hint {
+  color: #66758c;
+  font-size: 12px;
+  text-align: center;
+}
+
 .action-row {
   display: flex;
   align-items: center;
