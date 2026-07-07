@@ -152,11 +152,14 @@ function trimFfmpegError(stderr: string): string {
 
 function findPackagedFfmpeg(): string | null {
   const executableName = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
-  const candidates = [
-    join(process.resourcesPath, "app.asar.unpacked", "node_modules", "ffmpeg-static", executableName),
-    join(process.resourcesPath, "ffmpeg-static", executableName),
-    ffmpegStaticPath
-  ].filter(Boolean) as string[];
+  const candidates: string[] = [ffmpegStaticPath];
+
+  if (process.resourcesPath) {
+    candidates.unshift(
+      join(process.resourcesPath, "app.asar.unpacked", "node_modules", "ffmpeg-static", executableName),
+      join(process.resourcesPath, "ffmpeg-static", executableName)
+    );
+  }
 
   return candidates.find((candidate) => existsSync(candidate)) ?? null;
 }
