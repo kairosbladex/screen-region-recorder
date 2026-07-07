@@ -33,6 +33,20 @@ jobs:
 
       - run: npm ci
 
+      - name: Install FFmpeg on macOS
+        if: runner.os == 'macOS'
+        run: brew list ffmpeg || brew install ffmpeg
+
+      - name: Install FFmpeg on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install ffmpeg -y --no-progress
+
+      - name: Verify FFmpeg tools
+        run: |
+          ffmpeg -version
+          ffprobe -version
+
       - run: npm run verify
 
       - run: npm run ${{ matrix.dist_script }}
