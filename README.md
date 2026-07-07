@@ -2,6 +2,17 @@
 
 一个本地桌面录屏工具。启动后框选屏幕矩形区域，选择 5 秒、10 秒或 15 秒录制，并导出为 GIF、MP4 或 WebM。录制和转码都在本机完成，不依赖远程服务。
 
+## 下载安装
+
+从 GitHub Releases 下载最新安装包：
+
+https://github.com/kairosbladex/screen-region-recorder/releases/latest
+
+- **macOS Apple Silicon**：下载 `Screen-Region-Recorder-*-mac-arm64.dmg`，打开后将应用拖入 Applications 文件夹。
+- **Windows x64**：下载 `Screen-Region-Recorder-*-win-x64.exe`，双击安装。
+
+> 当前安装包是不签名的测试版本，适合自用或开发验证。Windows SmartScreen 可能提示"Windows 已保护你的电脑"，点击"仍要运行"即可。macOS Gatekeeper 可能提示应用无法验证，在系统设置 > 隐私与安全性中点击"仍要打开"。
+
 ## 功能
 
 - 全屏透明遮罩拖拽选择录制区域，`Esc` 取消，可重复选择。
@@ -13,7 +24,7 @@
 - macOS 下检测屏幕录制权限，权限不足时提供清晰提示和设置入口。
 - 对未选择区域、无权限、FFmpeg 不可用、导出失败给出可读错误。
 
-## 安装
+## 开发安装
 
 ```bash
 cd /Users/wangxiaolin/GitHub/screen-region-recorder
@@ -25,19 +36,6 @@ npm install
 ```bash
 ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/' npm install
 ```
-
-
-## 直接下载安装
-
-从 GitHub Releases 下载最新安装包：
-
-https://github.com/kairosbladex/screen-region-recorder/releases/latest
-
-- **Windows**：下载 `Screen-Region-Recorder-*-win-x64.exe`，双击安装。
-- **macOS**：下载 `Screen-Region-Recorder-*-mac-arm64.dmg`，打开后将应用拖入 Applications 文件夹。
-
-> 当前安装包是不签名的测试版本，适合自用或开发验证。Windows SmartScreen 可能提示"Windows 已保护你的电脑"，点击"仍要运行"即可。macOS Gatekeeper 可能提示应用无法验证，在系统设置 > 隐私与安全性中点击"仍要打开"。
-
 
 ## 启动开发版
 
@@ -86,7 +84,7 @@ npm run dist:mac
 输出文件位于 `dist/`，文件名类似：
 
 ```text
-Screen-Region-Recorder-0.1.0-mac-arm64.dmg
+Screen-Region-Recorder-0.1.3-mac-arm64.dmg
 ```
 
 ### Windows `.exe`
@@ -101,7 +99,7 @@ npm run dist:win
 输出文件位于 `dist/`，文件名类似：
 
 ```text
-Screen-Region-Recorder-0.1.0-win-x64.exe
+Screen-Region-Recorder-0.1.3-win-x64.exe
 ```
 
 `npm run dist:all` 会直接退出并提示使用 CI 矩阵，避免误用单一系统生成错误平台的 FFmpeg。
@@ -110,10 +108,20 @@ Screen-Region-Recorder-0.1.0-win-x64.exe
 
 仓库包含 `.github/workflows/build-installers.yml`。手动触发或在 `main` / `master` 分支推送后，会分别在：
 
-- `macos-latest`：运行 `npm ci`、`npm run verify`、`npm run dist:mac`，上传 `.dmg`。
-- `windows-latest`：运行 `npm ci`、`npm run verify`、`npm run dist:win`，上传 `.exe`。
+- `macos-latest`：运行 `npm ci`、安装 FFmpeg/ffprobe、`npm run verify`、`npm run dist:mac`，上传 `.dmg`。
+- `windows-latest`：运行 `npm ci`、安装 FFmpeg/ffprobe、`npm run verify`、`npm run dist:win`，上传 `.exe`。
 
 这是推荐的双平台打包方式，可以确保每个平台都安装并打包对应系统的 FFmpeg。
+
+推送 `v*` tag 时，workflow 会在两个平台打包成功后创建 GitHub Release，并上传 `.dmg` / `.exe` 安装包：
+
+```bash
+npm version patch --no-git-tag-version
+git add package.json package-lock.json
+git commit -m "chore(release): bump version"
+git tag v0.1.4
+git push origin main v0.1.4
+```
 
 ### 未签名说明
 
