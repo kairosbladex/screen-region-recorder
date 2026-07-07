@@ -10,6 +10,12 @@ import type {
 } from "../shared/types";
 
 const api = {
+  hideMainWindow: (): void => {
+    ipcRenderer.send("screenclip:hide-main-window");
+  },
+  showMainWindow: (): void => {
+    ipcRenderer.send("screenclip:show-main-window");
+  },
   getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke("screenclip:get-app-info"),
   checkPermission: (): Promise<PermissionInfo> => ipcRenderer.invoke("screenclip:check-permission"),
   openScreenSettings: (): Promise<void> => ipcRenderer.invoke("screenclip:open-screen-settings"),

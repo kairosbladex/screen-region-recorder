@@ -95,6 +95,14 @@ function registerIpcHandlers(): void {
     return exportRecording(request);
   });
 
+  ipcMain.on("screenclip:hide-main-window", () => {
+    mainWindow?.hide();
+  });
+
+  ipcMain.on("screenclip:show-main-window", () => {
+    mainWindow?.show();
+  });
+
   ipcMain.handle("screenclip:open-output-dir", async () => {
     const outputDir = getOutputDir();
     mkdirSync(outputDir, { recursive: true });
