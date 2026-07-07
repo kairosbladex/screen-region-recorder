@@ -1,0 +1,67 @@
+{
+  "name": "screen-region-recorder",
+  "version": "0.1.0",
+  "description": "Desktop screen region recorder for GIF, MP4 and WebM exports.",
+  "main": "./out/main/index.js",
+  "author": "wangxiaolin",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "npm run typecheck && electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "verify": "npm run typecheck && npm run test && npm run build",
+    "dist": "npm run build && electron-builder --mac --dir"
+  },
+  "dependencies": {
+    "@electron-toolkit/utils": "^4.0.0",
+    "ffmpeg-static": "^5.2.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^43.0.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^5.0.0",
+    "typescript": "^5.7.2",
+    "vite": "^7.3.6",
+    "vitest": "^4.1.9"
+  },
+  "build": {
+    "appId": "local.screen-region-recorder",
+    "productName": "Screen Region Recorder",
+    "electronDist": "node_modules/electron/dist",
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/ffmpeg-static/ffmpeg*"
+    ],
+    "mac": {
+      "category": "public.app-category.video",
+      "identity": null,
+      "target": [
+        "dir"
+      ],
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Screen Region Recorder does not record microphone audio by default.",
+        "NSScreenCaptureDescription": "Screen Region Recorder needs screen recording permission to capture the selected screen area."
+      }
+    },
+    "extraResources": [
+      {
+        "from": "node_modules/ffmpeg-static",
+        "to": "ffmpeg-static",
+        "filter": [
+          "ffmpeg*"
+        ]
+      }
+    ]
+  }
+}
