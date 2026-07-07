@@ -73,7 +73,7 @@ function recordStream(
   return new Promise((resolve, reject) => {
     const chunks: Blob[] = [];
     const mimeType = pickMediaRecorderMimeType();
-    const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    const recorder = mimeType ? new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 20_000_000 }) : new MediaRecorder(stream, { videoBitsPerSecond: 20_000_000 });
     const startedAt = Date.now();
     const durationMs = durationSeconds * 1000;
 

@@ -71,7 +71,7 @@ function createFfmpegArgs(inputPath: string, outputPath: string, format: ExportF
       "-i",
       inputPath,
       "-filter_complex",
-      `[0:v]${cropFilter},fps=12,split[s0][s1];[s0]palettegen=stats_mode=diff[p];[s1][p]paletteuse=dither=sierra2_4a`,
+      `[0:v]${cropFilter},fps=30,split[s0][s1];[s0]palettegen=stats_mode=diff[p];[s1][p]paletteuse=dither=sierra2_4a`,
       outputPath
     ];
   }
