@@ -5,6 +5,15 @@ const SCREEN_SETTINGS_URL = "x-apple.systempreferences:com.apple.preference.secu
 
 export function getScreenPermissionInfo(): PermissionInfo {
   if (process.platform !== "darwin") {
+    if (process.platform === "win32") {
+      return {
+        platform: process.platform,
+        status: "granted",
+        canOpenSettings: false,
+        message: "Windows 会在录屏启动时由系统处理屏幕捕获授权，本应用无需打开 macOS 屏幕录制设置。"
+      };
+    }
+
     return {
       platform: process.platform,
       status: "granted",

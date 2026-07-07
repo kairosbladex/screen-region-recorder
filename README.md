@@ -56,15 +56,55 @@ npm run verify
 - 5/10/15 秒时长约束。
 - `Downloads/ScreenClips` 输出文件名和路径生成。
 
-## 打包
+## 打包安装包
 
 ```bash
 npm run dist
 ```
 
-当前 `electron-builder` 配置使用 macOS `dir` 目标，输出未压缩 `.app` 目录，便于本地调试。`ffmpeg-static` 会作为打包资源保留；运行时优先使用本机 `ffmpeg`，找不到时尝试使用打包资源。
+`npm run dist` 默认等同于 `npm run dist:mac`，会在 macOS 上生成 `.dmg`。
 
-当前本地打包默认不签名，适合自用和开发验证。需要正式分发时，请补充 Apple Developer 证书、notarization 和对应的 `electron-builder` 签名配置。
+### macOS `.dmg`
+
+```bash
+npm run dist:mac
+```
+
+输出文件位于 `dist/`，文件名类似：
+
+```text
+Screen-Region-Recorder-0.1.0-mac-arm64.dmg
+```
+
+### Windows `.exe`
+
+请在 Windows 环境执行，不要在 macOS 上交叉打包 Windows 安装包。`ffmpeg-static` 会按安装依赖时的系统下载二进制文件；在 macOS 上打 Windows 包可能会把 macOS 版 FFmpeg 带进 Windows 安装包。
+
+```powershell
+npm ci
+npm run dist:win
+```
+
+输出文件位于 `dist/`，文件名类似：
+
+```text
+Screen-Region-Recorder-0.1.0-win-x64.exe
+```
+
+`npm run dist:all` 会直接退出并提示使用 CI 矩阵，避免误用单一系统生成错误平台的 FFmpeg。
+
+### GitHub Actions
+
+仓库包含 `.github/workflows/build-installers.yml`。手动触发或在 `main` / `master` 分支推送后，会分别在：
+
+- `macos-latest`：运行 `npm ci`、`npm run verify`、`npm run dist:mac`，上传 `.dmg`。
+- `windows-latest`：运行 `npm ci`、`npm run verify`、`npm run dist:win`，上传 `.exe`。
+
+这是推荐的双平台打包方式，可以确保每个平台都安装并打包对应系统的 FFmpeg。
+
+### 未签名说明
+
+当前安装包是不签名的测试版本，适合自用、开发验证或小范围客户试用。Windows SmartScreen 和 macOS Gatekeeper 可能提示风险。正式分发前需要补充 Apple Developer 证书、公证配置、Windows 代码签名证书和对应 CI secrets。
 
 ## FFmpeg
 
@@ -81,6 +121,8 @@ brew install ffmpeg
 
 两者都不可用时，“开始录制”会禁用或导出时报错。
 
+打包版本会优先使用本机 `ffmpeg`，找不到时使用安装包随附的 `ffmpeg-static`。Windows `.exe` 必须在 Windows 环境或 CI 的 `windows-latest` runner 中构建，才能随附 Windows 版 `ffmpeg.exe`。
+
 ## macOS 权限
 
 macOS 10.15+ 需要屏幕录制权限：
@@ -91,6 +133,12 @@ macOS 10.15+ 需要屏幕录制权限：
 4. 退出并重新启动应用。
 
 开发模式下，macOS 有时会把权限归到启动它的终端、IDE 或 Electron 进程名下；如果授权后仍失败，请重启应用，并确认授权对象是否正确。
+
+## Windows 使用
+
+Windows 不需要打开 macOS 屏幕录制设置。首次录制时，如果系统或安全软件弹出屏幕捕获相关提示，请允许应用继续录制。
+
+安装包为 NSIS `.exe`，默认创建桌面和开始菜单快捷方式。录制输出仍保存到当前用户的 `Downloads/ScreenClips`。
 
 ## 常见问题
 

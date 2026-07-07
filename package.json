@@ -11,7 +11,10 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "verify": "npm run typecheck && npm run test && npm run build",
-    "dist": "npm run build && electron-builder --mac --dir"
+    "dist": "npm run dist:mac",
+    "dist:mac": "npm run build && electron-builder --mac dmg",
+    "dist:win": "npm run build && electron-builder --win nsis --x64",
+    "dist:all": "node -e \"console.error('Use the GitHub Actions matrix, or run dist:mac on macOS and dist:win on Windows so ffmpeg-static is installed for the target OS.'); process.exit(1)\""
   },
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0",
@@ -35,6 +38,7 @@
   "build": {
     "appId": "local.screen-region-recorder",
     "productName": "Screen Region Recorder",
+    "artifactName": "Screen-Region-Recorder-${version}-${os}-${arch}.${ext}",
     "electronDist": "node_modules/electron/dist",
     "files": [
       "out/**/*",
@@ -47,12 +51,29 @@
       "category": "public.app-category.video",
       "identity": null,
       "target": [
-        "dir"
+        "dmg"
       ],
       "extendInfo": {
         "NSMicrophoneUsageDescription": "Screen Region Recorder does not record microphone audio by default.",
         "NSScreenCaptureDescription": "Screen Region Recorder needs screen recording permission to capture the selected screen area."
       }
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     },
     "extraResources": [
       {
