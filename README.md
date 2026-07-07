@@ -26,6 +26,19 @@ npm install
 ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/' npm install
 ```
 
+
+## 直接下载安装
+
+从 GitHub Releases 下载最新安装包：
+
+https://github.com/kairosbladex/screen-region-recorder/releases/latest
+
+- **Windows**：下载 `Screen-Region-Recorder-*-win-x64.exe`，双击安装。
+- **macOS**：下载 `Screen-Region-Recorder-*-mac-arm64.dmg`，打开后将应用拖入 Applications 文件夹。
+
+> 当前安装包是不签名的测试版本，适合自用或开发验证。Windows SmartScreen 可能提示"Windows 已保护你的电脑"，点击"仍要运行"即可。macOS Gatekeeper 可能提示应用无法验证，在系统设置 > 隐私与安全性中点击"仍要打开"。
+
+
 ## 启动开发版
 
 ```bash
