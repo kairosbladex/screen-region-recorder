@@ -1,4 +1,4 @@
-export type RecordingDuration = 5 | 10 | 15;
+export type RecordingDuration = number;
 export type ExportFormat = "gif" | "mp4" | "webm";
 
 export interface Rectangle {

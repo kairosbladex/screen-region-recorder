@@ -1,7 +1,7 @@
 import { AlertTriangle, CheckCircle2, ExternalLink, FolderOpen, MousePointer2, Radio, Settings, Timer } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { formatRegionLabel } from "../../shared/coordinates";
-import { EXPORT_FORMATS, RECORDING_DURATIONS } from "../../shared/options";
+import { DEFAULT_DURATION, EXPORT_FORMATS, MAX_DURATION, MIN_DURATION } from "../../shared/options";
 import type { AppInfo, CaptureRegion, ExportFormat, RecordingDuration } from "../../shared/types";
 import { recordSelectedRegion, type RecordingPhase, type RecordingProgress } from "./services/screenRecorder";
 
@@ -10,7 +10,7 @@ type AppStatus = "idle" | "selecting" | "recording" | "exporting" | "done" | "er
 export function App() {
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [region, setRegion] = useState<CaptureRegion | null>(null);
-  const [duration, setDuration] = useState<RecordingDuration>(5);
+  const [duration, setDuration] = useState<RecordingDuration>(DEFAULT_DURATION);
   const [format, setFormat] = useState<ExportFormat>("gif");
   const [status, setStatus] = useState<AppStatus>("idle");
   const [message, setMessage] = useState("请选择一个屏幕区域。");
@@ -130,18 +130,21 @@ export function App() {
             <Timer size={16} />
             <span>录制时长</span>
           </div>
-          <div className="segmented-control" aria-label="录制时长">
-            {RECORDING_DURATIONS.map((item) => (
-              <button
-                key={item}
-                type="button"
-                className={duration === item ? "selected" : ""}
-                onClick={() => setDuration(item)}
-                disabled={busy}
-              >
-                {item}s
-              </button>
-            ))}
+          <div className="duration-slider">
+            <span className="duration-value">{duration}s</span>
+            <input
+              type="range"
+              min={MIN_DURATION}
+              max={MAX_DURATION}
+              step={1}
+              value={duration}
+              onChange={(e) => setDuration(Number(e.target.value))}
+              disabled={busy}
+            />
+            <div className="duration-range-labels">
+              <span>{MIN_DURATION}s</span>
+              <span>{MAX_DURATION}s</span>
+            </div>
           </div>
         </div>
 
