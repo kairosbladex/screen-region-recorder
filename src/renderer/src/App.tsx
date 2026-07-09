@@ -34,18 +34,24 @@ export function App() {
     setProgress(null);
     window.screenClip.hideMainWindow();
 
-    const result = await window.screenClip.selectRegion();
-    window.screenClip.showMainWindow();
+    try {
+      const result = await window.screenClip.selectRegion();
 
-    if (result.ok && result.region) {
-      setRegion(result.region);
-      setStatus("idle");
-      setMessage("区域已选择，可以开始录制。");
-      return;
+      if (result.ok && result.region) {
+        setRegion(result.region);
+        setStatus("idle");
+        setMessage("区域已选择，可以开始录制。");
+        return;
+      }
+
+      setStatus(result.cancelled ? "idle" : "error");
+      setMessage(result.error ?? "区域选择失败。");
+    } catch (error) {
+      setStatus("error");
+      setMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      window.screenClip.showMainWindow();
     }
-
-    setStatus(result.cancelled ? "idle" : "error");
-    setMessage(result.error ?? "区域选择失败。");
   }
 
   async function handleStartRecording(): Promise<void> {

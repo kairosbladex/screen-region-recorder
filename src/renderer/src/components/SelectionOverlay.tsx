@@ -1,16 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { hasUsableSelection, normalizeRectangle } from "../../../shared/coordinates";
 import type { Rectangle } from "../../../shared/types";
-
-interface DragState {
-  start: { x: number; y: number };
-  current: { x: number; y: number };
-}
+import { createSelectionDragTracker, type DragState, type SelectionPoint } from "./selectionDrag";
 
 export function SelectionOverlay() {
   const params = new URLSearchParams(window.location.search);
-  const displayId = Number(params.get("displayId"));
+  const displayIdParam = params.get("displayId");
+  const displayId = displayIdParam === null ? null : Number(displayIdParam);
   const [drag, setDrag] = useState<DragState | null>(null);
+  const dragTracker = useMemo(() => createSelectionDragTracker(setDrag), []);
 
   const rect = useMemo<Rectangle | null>(() => {
     if (!drag) {
@@ -28,6 +26,7 @@ export function SelectionOverlay() {
 
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key === "Escape") {
+        dragTracker.cancel();
         window.screenClip.cancelSelection();
       }
     };
@@ -40,41 +39,43 @@ export function SelectionOverlay() {
       document.documentElement.style.background = origHtmlBg;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [dragTracker]);
 
   return (
     <main
       className="selection-overlay"
       onPointerDown={(event) => {
-        const point = { x: event.clientX, y: event.clientY };
-        setDrag({ start: point, current: point });
+        if (event.button !== 0) {
+          return;
+        }
+
+        dragTracker.begin(toSelectionPoint(event));
         event.currentTarget.setPointerCapture(event.pointerId);
       }}
       onPointerMove={(event) => {
-        if (!drag) {
-          return;
-        }
-
-        setDrag((current) => {
-          if (!current) {
-            return current;
-          }
-
-          return {
-            ...current,
-            current: { x: event.clientX, y: event.clientY }
-          };
-        });
+        dragTracker.move(toSelectionPoint(event));
       }}
       onPointerUp={(event) => {
-        if (!drag) {
+        const finalRect = dragTracker.finish(toSelectionPoint(event));
+        if (!finalRect) {
           return;
         }
 
-        const finalRect = normalizeRectangle(drag.start, { x: event.clientX, y: event.clientY });
-        if (hasUsableSelection(finalRect) && Number.isFinite(displayId)) {
+        releasePointerCapture(event);
+        if (hasUsableSelection(finalRect) && displayId !== null && Number.isFinite(displayId)) {
           window.screenClip.completeSelection(displayId, finalRect);
         } else {
+          window.screenClip.cancelSelection();
+        }
+      }}
+      onPointerCancel={(event) => {
+        releasePointerCapture(event);
+        if (dragTracker.cancel()) {
+          window.screenClip.cancelSelection();
+        }
+      }}
+      onLostPointerCapture={() => {
+        if (dragTracker.cancel()) {
           window.screenClip.cancelSelection();
         }
       }}
@@ -97,4 +98,16 @@ export function SelectionOverlay() {
       ) : null}
     </main>
   );
+}
+
+function toSelectionPoint(event: React.PointerEvent): SelectionPoint {
+  return { x: event.clientX, y: event.clientY };
+}
+
+function releasePointerCapture(event: React.PointerEvent): void {
+  if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
+    return;
+  }
+
+  event.currentTarget.releasePointerCapture(event.pointerId);
 }

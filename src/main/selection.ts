@@ -29,6 +29,11 @@ export async function selectRegion(): Promise<SelectionResult> {
 
   return new Promise((resolve) => {
     const displays = screen.getAllDisplays();
+    if (displays.length === 0) {
+      resolve({ ok: false, error: "未找到可用显示器，请重新尝试。" });
+      return;
+    }
+
     const windows = displays.map((display) => {
       const overlay = createOverlayWindow(display);
       void loadRenderer(overlay, { mode: "selection", displayId: String(display.id) }, is.dev);
@@ -36,6 +41,9 @@ export async function selectRegion(): Promise<SelectionResult> {
     });
 
     activeSession = { windows, resolve, settled: false };
+    for (const window of windows) {
+      window.once("closed", handleSelectionWindowClosed);
+    }
   });
 }
 
@@ -74,6 +82,17 @@ function cancelSelection(): void {
   }
 
   settleSession({ ok: false, cancelled: true, error: "已取消区域选择。" });
+}
+
+function handleSelectionWindowClosed(): void {
+  const session = activeSession;
+  if (!session || session.settled) {
+    return;
+  }
+
+  if (session.windows.every((window) => window.isDestroyed())) {
+    settleSession({ ok: false, cancelled: true, error: "区域选择窗口已关闭。" });
+  }
 }
 
 function settleSession(result: SelectionResult): void {

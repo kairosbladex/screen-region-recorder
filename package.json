@@ -1,6 +1,6 @@
 {
   "name": "screen-region-recorder",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Desktop screen region recorder for GIF, MP4 and WebM exports.",
   "main": "./out/main/index.js",
   "author": "wangxiaolin",

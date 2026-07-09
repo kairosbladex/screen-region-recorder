@@ -28,26 +28,32 @@ export async function recordSelectedRegion(options: RecordSelectionOptions): Pro
 
   await window.screenClip.prepareCapture(options.region.displayId);
 
-  const stream = await getDisplayStream();
-  const track = stream.getVideoTracks()[0];
-  const capturedSize = getCapturedSize(track, options.region);
-
   try {
-    const blob = await recordStream(stream, options.durationSeconds, options.onProgress, options.onPhase);
-    options.onPhase("exporting");
-    const data = await blob.arrayBuffer();
+    const stream = await getDisplayStream();
+    const track = stream.getVideoTracks()[0];
+    const capturedSize = getCapturedSize(track, options.region);
 
-    return window.screenClip.exportRecording({
-      data,
-      format: options.format,
-      durationSeconds: options.durationSeconds,
-      region: options.region,
-      capturedSize
-    });
-  } finally {
-    for (const mediaTrack of stream.getTracks()) {
-      mediaTrack.stop();
+    try {
+      const blob = await recordStream(stream, options.durationSeconds, options.onProgress, options.onPhase);
+      options.onPhase("exporting");
+      const data = await blob.arrayBuffer();
+
+      return await window.screenClip.exportRecording({
+        data,
+        format: options.format,
+        durationSeconds: options.durationSeconds,
+        region: options.region,
+        capturedSize
+      });
+    } finally {
+      for (const mediaTrack of stream.getTracks()) {
+        mediaTrack.stop();
+      }
     }
+  } finally {
+    // Always disarm display-media routing, including permission cancel / record failures
+    // where exportRecording (which also finishes the session) never runs.
+    await window.screenClip.finishCapture();
   }
 }
 

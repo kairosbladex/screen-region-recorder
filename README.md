@@ -7,7 +7,7 @@
 从 [GitHub Releases](https://github.com/kairosbladex/screen-region-recorder/releases/latest) 下载最新安装包：
 
 - **macOS Apple Silicon**：`Screen-Region-Recorder-*-mac-arm64.dmg`
-- **Windows x64**：`Screen-Region-Recorder-*-win-x64.exe` 或 `*-win-x64-portable.zip`
+- **Windows x64**：`Screen-Region-Recorder-*-win-x64.exe`
 
 > 安装包为未签名测试版本。Windows SmartScreen 可能提示"Windows 已保护你的电脑"，点击"仍要运行"。macOS Gatekeeper 可能提示无法验证，在系统设置 > 隐私与安全性中点击"仍要打开"。
 
@@ -66,6 +66,8 @@ npm run verify
 - MP4/WebM 编码器安全偶数 crop
 - 1–10 秒时长约束
 - `Downloads/ScreenClips` 输出文件名和路径生成
+- 捕获会话释放、多屏源匹配、导出请求校验和输出路径安全
+- 区域选择拖拽的快速 pointer 事件边界
 
 ## 打包安装包
 
@@ -88,7 +90,7 @@ npm run dist:win
 
 输出 `dist/Screen-Region-Recorder-*-win-x64.exe`
 
-也可直接使用 `dist/win-unpacked` 目录或 portable zip。
+也可直接使用 `dist/win-unpacked` 目录。
 
 ### GitHub Actions
 
@@ -98,8 +100,9 @@ npm run dist:win
 npm version patch --no-git-tag-version
 git add package.json package-lock.json
 git commit -m "chore(release): bump version"
-git tag v0.2.2
-git push origin main v0.2.2
+VERSION=$(node -p "require('./package.json').version")
+git tag "v$VERSION"
+git push origin main "v$VERSION"
 ```
 
 ### 未签名说明
@@ -131,7 +134,7 @@ macOS 10.15+ 需要屏幕录制权限：
 
 Windows 自动处理屏幕捕获授权，无需手动设置。首次录制时如系统弹出请求，允许即可。
 
-安装包为 NSIS `.exe`，创建桌面和开始菜单快捷方式。也可使用 portable zip 免安装运行。
+安装包为 NSIS `.exe`，创建桌面和开始菜单快捷方式。
 
 ## 常见问题
 
@@ -150,7 +153,7 @@ ffmpeg -version
 
 ### GIF 文件较大
 
-GIF 使用 12 fps 和调色板导出，适合短片段。需要更小体积时选择 MP4 或 WebM。
+GIF 使用 30 fps 和调色板导出，适合短片段。需要更小体积时选择 MP4 或 WebM。
 
 ### 多屏下裁剪不对
 

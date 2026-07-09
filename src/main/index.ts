@@ -3,8 +3,12 @@ import { is } from "@electron-toolkit/utils";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
+import { pickCaptureSourceByDisplayId } from "../shared/captureSource";
+import { assertExportRecordingRequest } from "../shared/exportRequest";
 import { createOutputFilePath } from "../shared/outputPaths";
+import { isPathInsideDirectory } from "../shared/pathSafety";
 import type { AppInfo, CaptureSourceInfo, DisplayInfo, ExportRecordingRequest, ExportRecordingResult } from "../shared/types";
+import { CaptureSession } from "./captureSession";
 import { toDisplayInfo } from "./display";
 import { getFfmpegInfo, transcodeRecording } from "./ffmpeg";
 import { getScreenPermissionInfo, openScreenRecordingSettings } from "./permissions";
@@ -12,7 +16,7 @@ import { loadRenderer } from "./rendererLoader";
 import { registerSelectionIpc, selectRegion } from "./selection";
 
 let mainWindow: BrowserWindow | null = null;
-let activeCaptureDisplayId: number | null = null;
+const captureSession = new CaptureSession();
 
 app.commandLine.appendSwitch("disable-features", "MacCatapLoopbackAudioForScreenShare");
 
@@ -42,13 +46,19 @@ function createMainWindow(): void {
 
 function registerDisplayMediaHandler(): void {
   session.defaultSession.setDisplayMediaRequestHandler(async (_request, callback) => {
+    const activeCaptureDisplayId = captureSession.getActiveDisplayId();
     if (activeCaptureDisplayId === null) {
       callback({});
       return;
     }
 
-    const source = await getSourceForDisplay(activeCaptureDisplayId);
-    callback(source ? { video: source } : {});
+    try {
+      const source = await getSourceForDisplay(activeCaptureDisplayId);
+      callback(source ? { video: source } : {});
+    } catch {
+      captureSession.finish();
+      callback({});
+    }
   }, { useSystemPicker: false });
 }
 
@@ -71,18 +81,26 @@ function registerIpcHandlers(): void {
     return selectRegion();
   });
 
-  ipcMain.handle("screenclip:prepare-capture", async (_event, displayId: number): Promise<CaptureSourceInfo> => {
-    activeCaptureDisplayId = displayId;
+  ipcMain.handle("screenclip:prepare-capture", async (_event, displayId: unknown): Promise<CaptureSourceInfo> => {
+    if (typeof displayId !== "number" || !Number.isInteger(displayId)) {
+      throw new Error("显示器 ID 无效。");
+    }
+
     const source = await getSourceForDisplay(displayId);
     const display = getDisplayInfo(displayId);
 
     if (!source) {
+      captureSession.finish();
       throw new Error("未找到可录制的屏幕源。请确认屏幕录制权限已开启后重试。");
     }
 
     if (!display) {
+      captureSession.finish();
       throw new Error("未找到选中区域对应的显示器。");
     }
+
+    // Only arm the display-media route after the source is confirmed.
+    captureSession.prepare(displayId);
 
     return {
       sourceId: source.id,
@@ -91,8 +109,12 @@ function registerIpcHandlers(): void {
     };
   });
 
-  ipcMain.handle("screenclip:export-recording", async (_event, request: ExportRecordingRequest): Promise<ExportRecordingResult> => {
-    return exportRecording(request);
+  ipcMain.handle("screenclip:finish-capture", async () => {
+    captureSession.finish();
+  });
+
+  ipcMain.handle("screenclip:export-recording", async (_event, request: unknown): Promise<ExportRecordingResult> => {
+    return exportRecording(assertExportRecordingRequest(request));
   });
 
   ipcMain.on("screenclip:hide-main-window", () => {
@@ -110,6 +132,10 @@ function registerIpcHandlers(): void {
   });
 
   ipcMain.handle("screenclip:reveal-file", async (_event, filePath: string) => {
+    if (typeof filePath !== "string" || !isPathInsideDirectory(filePath, getOutputDir())) {
+      throw new Error("只能打开输出目录内的录制文件。");
+    }
+
     shell.showItemInFolder(filePath);
   });
 }
@@ -154,7 +180,7 @@ async function exportRecording(request: ExportRecordingRequest): Promise<ExportR
     };
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
-    activeCaptureDisplayId = null;
+    captureSession.finish();
   }
 }
 
@@ -164,13 +190,9 @@ async function getSourceForDisplay(displayId: number): Promise<Electron.DesktopC
     thumbnailSize: { width: 0, height: 0 },
     fetchWindowIcons: false
   });
+  const displayCount = screen.getAllDisplays().length;
 
-  const byDisplayId = sources.find((source) => source.display_id === String(displayId));
-  if (byDisplayId) {
-    return byDisplayId;
-  }
-
-  return sources.length === 1 ? sources[0] : null;
+  return pickCaptureSourceByDisplayId(sources, displayId, { displayCount });
 }
 
 function getDisplayInfo(displayId: number): DisplayInfo | null {
