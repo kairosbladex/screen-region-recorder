@@ -105,9 +105,9 @@ git tag "v$VERSION"
 git push origin main "v$VERSION"
 ```
 
-### 未签名说明
+### macOS 签名说明
 
-当前安装包不签名。Windows SmartScreen 和 macOS Gatekeeper 可能提示风险。正式分发前需要 Apple Developer 证书、公证配置、Windows 代码签名证书和 CI secrets。
+macOS 安装包会在打包时做 ad-hoc bundle 签名，避免 App bundle 签名结构损坏导致无法启动。它仍不是 Apple Developer ID 公证包，Gatekeeper 可能提示无法验证；首次打开可在系统设置 > 隐私与安全性中点击"仍要打开"。正式分发前需要 Apple Developer 证书、公证配置、Windows 代码签名证书和 CI secrets。
 
 ## FFmpeg
 

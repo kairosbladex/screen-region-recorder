@@ -51,13 +51,26 @@ jobs:
 
       - run: npm run ${{ matrix.dist_script }}
 
+      - name: Verify macOS installer
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          dmg_path="$(find dist -maxdepth 1 -name '*.dmg' -print -quit)"
+          mount_dir="$(mktemp -d)"
+          hdiutil attach -nobrowse -readonly -mountpoint "$mount_dir" "$dmg_path"
+          trap 'hdiutil detach "$mount_dir"' EXIT
+          app_path="$(find "$mount_dir" -maxdepth 1 -name '*.app' -print -quit)"
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+          test -x "$app_path/Contents/Resources/app.asar.unpacked/node_modules/ffmpeg-static/ffmpeg"
+
       - uses: actions/upload-artifact@v4
         with:
           name: installer-${{ matrix.os }}
           path: |
             dist/*.dmg
             dist/*.exe
-          if-no-files-found: warn
+          if-no-files-found: error
 
   release:
     name: Create Release
@@ -74,11 +87,15 @@ jobs:
           pattern: installer-*
           merge-multiple: true
 
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            *.dmg
-            *.exe
-          generate_release_notes: true
-          draft: false
-          prerelease: false
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          assets=( ./*.dmg ./*.exe )
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "${assets[@]}" --generate-notes --verify-tag --title "$GITHUB_REF_NAME"
+          fi

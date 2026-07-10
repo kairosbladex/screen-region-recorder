@@ -1,6 +1,6 @@
 {
   "name": "screen-region-recorder",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Desktop screen region recorder for GIF, MP4 and WebM exports.",
   "main": "./out/main/index.js",
   "author": "wangxiaolin",
@@ -12,7 +12,7 @@
     "test": "vitest run",
     "verify": "npm run typecheck && npm run test && npm run build",
     "dist": "npm run dist:mac",
-    "dist:mac": "npm run build && electron-builder --mac dmg --publish never",
+    "dist:mac": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --publish never",
     "dist:win": "npm run build && electron-builder --win nsis --x64 --publish never",
     "dist:all": "node -e \"console.error('Use the GitHub Actions matrix, or run dist:mac on macOS and dist:win on Windows so ffmpeg-static is installed for the target OS.'); process.exit(1)\""
   },
@@ -36,6 +36,7 @@
     "vitest": "^4.1.9"
   },
   "build": {
+    "afterPack": "./scripts/ad-hoc-sign-mac.cjs",
     "appId": "local.screen-region-recorder",
     "productName": "Screen Region Recorder",
     "artifactName": "Screen-Region-Recorder-${version}-${os}-${arch}.${ext}",
@@ -48,7 +49,6 @@
     ],
     "mac": {
       "category": "public.app-category.video",
-      "identity": null,
       "target": [
         "dmg"
       ],
