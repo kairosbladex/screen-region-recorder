@@ -1,5 +1,6 @@
 import type { BrowserWindow } from "electron";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 export type RendererQuery = Record<string, string>;
 
@@ -37,6 +38,19 @@ export function createRendererUrl(
 
 export function getRendererIndexPath(): string {
   return join(__dirname, "../renderer/index.html");
+}
+
+export function getRendererEntryUrl(query: RendererQuery, allowDevServer: boolean): string {
+  const rendererUrl = createRendererUrl(process.env.ELECTRON_RENDERER_URL, query, allowDevServer);
+  if (rendererUrl) {
+    return rendererUrl;
+  }
+
+  const fileUrl = pathToFileURL(getRendererIndexPath());
+  for (const [key, value] of Object.entries(query)) {
+    fileUrl.searchParams.set(key, value);
+  }
+  return fileUrl.toString();
 }
 
 export function loadRenderer(

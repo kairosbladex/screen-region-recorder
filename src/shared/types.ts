@@ -37,11 +37,6 @@ export interface CropRectangle extends Rectangle {
   height: number;
 }
 
-export interface SelectionCompletePayload {
-  displayId: number;
-  rect: Rectangle;
-}
-
 export interface SelectionResult {
   ok: boolean;
   cancelled?: boolean;
@@ -76,13 +71,12 @@ export interface AppInfo {
   ffmpeg: FfmpegInfo;
 }
 
-export interface CaptureSourceInfo {
-  sourceId: string;
-  sourceName: string;
-  display: DisplayInfo;
+export interface CapturePreparation {
+  sessionId: string;
 }
 
 export interface ExportRecordingRequest {
+  sessionId: string;
   data: ArrayBuffer;
   format: ExportFormat;
   durationSeconds: RecordingDuration;

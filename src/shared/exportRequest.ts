@@ -6,6 +6,10 @@ export function assertExportRecordingRequest(value: unknown): ExportRecordingReq
     throw new Error("导出请求无效。");
   }
 
+  if (typeof value.sessionId !== "string" || value.sessionId.length === 0) {
+    throw new Error("录制会话无效。");
+  }
+
   if (!isArrayBuffer(value.data)) {
     throw new Error("导出数据无效。");
   }

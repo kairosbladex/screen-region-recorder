@@ -1,8 +1,10 @@
-import type { ScreenClipApi } from "../preload";
+import type { MainWindowApi } from "../preload/app";
+import type { SelectionWindowApi } from "../preload/selection";
 
 declare global {
   interface Window {
-    screenClip: ScreenClipApi;
+    screenClip: MainWindowApi;
+    selectionClip: SelectionWindowApi;
   }
 }
 

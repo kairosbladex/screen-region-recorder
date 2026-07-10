@@ -4,9 +4,6 @@ import type { Rectangle } from "../../../shared/types";
 import { createSelectionDragTracker, type DragState, type SelectionPoint } from "./selectionDrag";
 
 export function SelectionOverlay() {
-  const params = new URLSearchParams(window.location.search);
-  const displayIdParam = params.get("displayId");
-  const displayId = displayIdParam === null ? null : Number(displayIdParam);
   const [drag, setDrag] = useState<DragState | null>(null);
   const dragTracker = useMemo(() => createSelectionDragTracker(setDrag), []);
 
@@ -27,7 +24,7 @@ export function SelectionOverlay() {
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (event.key === "Escape") {
         dragTracker.cancel();
-        window.screenClip.cancelSelection();
+        window.selectionClip.cancelSelection();
       }
     };
 
@@ -62,21 +59,21 @@ export function SelectionOverlay() {
         }
 
         releasePointerCapture(event);
-        if (hasUsableSelection(finalRect) && displayId !== null && Number.isFinite(displayId)) {
-          window.screenClip.completeSelection(displayId, finalRect);
+        if (hasUsableSelection(finalRect)) {
+          window.selectionClip.completeSelection(finalRect);
         } else {
-          window.screenClip.cancelSelection();
+          window.selectionClip.cancelSelection();
         }
       }}
       onPointerCancel={(event) => {
         releasePointerCapture(event);
         if (dragTracker.cancel()) {
-          window.screenClip.cancelSelection();
+          window.selectionClip.cancelSelection();
         }
       }}
       onLostPointerCapture={() => {
         if (dragTracker.cancel()) {
-          window.screenClip.cancelSelection();
+          window.selectionClip.cancelSelection();
         }
       }}
     >

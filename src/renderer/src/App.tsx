@@ -32,7 +32,6 @@ export function App() {
     setStatus("selecting");
     setMessage("正在等待框选区域。");
     setProgress(null);
-    window.screenClip.hideMainWindow();
 
     try {
       const result = await window.screenClip.selectRegion();
@@ -49,8 +48,6 @@ export function App() {
     } catch (error) {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : String(error));
-    } finally {
-      window.screenClip.showMainWindow();
     }
   }
 
@@ -63,7 +60,6 @@ export function App() {
 
     setLastFile(null);
     setProgress({ elapsedMs: 0, remainingMs: duration * 1000, percent: 0 });
-    window.screenClip.hideMainWindow();
 
     try {
       const result = await recordSelectedRegion({
@@ -89,7 +85,6 @@ export function App() {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : String(error));
     } finally {
-      window.screenClip.showMainWindow();
       setProgress(null);
     }
   }

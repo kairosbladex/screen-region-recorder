@@ -21,24 +21,23 @@ export async function recordSelectedRegion(options: RecordSelectionOptions): Pro
     throw new Error("当前 Electron/Chromium 环境不支持 MediaRecorder。");
   }
 
-  const permission = await window.screenClip.checkPermission();
-  if (permission.platform === "darwin" && permission.status !== "granted") {
-    throw new Error(permission.message);
-  }
-
-  await window.screenClip.prepareCapture(options.region.displayId);
+  const { sessionId } = await window.screenClip.prepareCapture(options.region.displayId);
+  let primaryError: unknown;
 
   try {
     const stream = await getDisplayStream();
-    const track = stream.getVideoTracks()[0];
-    const capturedSize = getCapturedSize(track, options.region);
-
     try {
+      const track = stream.getVideoTracks()[0];
+      if (!track) {
+        throw new Error("捕获的屏幕流没有找到视频轨道。");
+      }
+      const capturedSize = getCapturedSize(track, options.region);
       const blob = await recordStream(stream, options.durationSeconds, options.onProgress, options.onPhase);
       options.onPhase("exporting");
       const data = await blob.arrayBuffer();
 
       return await window.screenClip.exportRecording({
+        sessionId,
         data,
         format: options.format,
         durationSeconds: options.durationSeconds,
@@ -50,10 +49,17 @@ export async function recordSelectedRegion(options: RecordSelectionOptions): Pro
         mediaTrack.stop();
       }
     }
+  } catch (error) {
+    primaryError = error;
+    throw error;
   } finally {
-    // Always disarm display-media routing, including permission cancel / record failures
-    // where exportRecording (which also finishes the session) never runs.
-    await window.screenClip.finishCapture();
+    try {
+      await window.screenClip.finishCapture(sessionId);
+    } catch (cleanupError) {
+      if (primaryError === undefined) {
+        throw cleanupError;
+      }
+    }
   }
 }
 
@@ -98,25 +104,35 @@ function recordStream(
       }
     };
 
-    recorder.onerror = () => {
-      window.clearInterval(timer);
-      reject(new Error("MediaRecorder 录制失败。"));
-    };
-
-    recorder.onstop = () => {
-      window.clearInterval(timer);
-      onProgress({ elapsedMs: durationMs, remainingMs: 0, percent: 1 });
-      resolve(new Blob(chunks, { type: recorder.mimeType || "video/webm" }));
-    };
-
-    onPhase("recording");
-    recorder.start(250);
-
-    window.setTimeout(() => {
+    const stopTimer = window.setTimeout(() => {
       if (recorder.state === "recording") {
         recorder.stop();
       }
     }, durationMs);
+
+    const clearTimers = (): void => {
+      window.clearInterval(timer);
+      window.clearTimeout(stopTimer);
+    };
+
+    recorder.onerror = () => {
+      clearTimers();
+      reject(new Error("MediaRecorder 录制失败。"));
+    };
+
+    recorder.onstop = () => {
+      clearTimers();
+      onProgress({ elapsedMs: durationMs, remainingMs: 0, percent: 1 });
+      resolve(new Blob(chunks, { type: recorder.mimeType || "video/webm" }));
+    };
+
+    try {
+      onPhase("recording");
+      recorder.start(250);
+    } catch (error) {
+      clearTimers();
+      reject(error);
+    }
   });
 }
 
@@ -127,8 +143,8 @@ function pickMediaRecorderMimeType(): string | undefined {
 
 function getCapturedSize(track: MediaStreamTrack, region: CaptureRegion): VideoSize {
   const settings = track.getSettings();
-  const width = Number(settings.width) || region.physicalBounds.width;
-  const height = Number(settings.height) || region.physicalBounds.height;
+  const width = Number(settings.width) || Math.round(region.displayBounds.width * region.displayScaleFactor);
+  const height = Number(settings.height) || Math.round(region.displayBounds.height * region.displayScaleFactor);
 
   return { width, height };
 }

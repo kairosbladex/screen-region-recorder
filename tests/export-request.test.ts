@@ -15,6 +15,7 @@ describe("assertExportRecordingRequest", () => {
     expect(() => assertExportRecordingRequest({ ...request, data: new Uint8Array([1, 2]) })).toThrow("导出数据无效");
     expect(() => assertExportRecordingRequest({ ...request, format: "../mp4" })).toThrow("导出格式无效");
     expect(() => assertExportRecordingRequest({ ...request, durationSeconds: 0 })).toThrow("录制时长无效");
+    expect(() => assertExportRecordingRequest({ ...request, sessionId: "" })).toThrow("录制会话无效");
   });
 
   it("rejects invalid capture region geometry", () => {
@@ -55,6 +56,7 @@ describe("assertExportRecordingRequest", () => {
 
 function createRequest(): ExportRecordingRequest {
   return {
+    sessionId: "session-1",
     data: new ArrayBuffer(3),
     format: "mp4",
     durationSeconds: 3,

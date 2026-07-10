@@ -2,12 +2,20 @@ import { BrowserWindow, ipcMain, screen } from "electron";
 import { is } from "@electron-toolkit/utils";
 import { join } from "node:path";
 import { buildCaptureRegion, hasUsableSelection, translateOverlayRectToDisplayLocal } from "../shared/coordinates";
-import type { CaptureRegion, SelectionCompletePayload, SelectionResult } from "../shared/types";
+import { assertSelectionRectangle } from "../shared/selectionRequest";
+import type { CaptureRegion, Rectangle, SelectionResult } from "../shared/types";
 import { toDisplayInfo } from "./display";
-import { loadRenderer } from "./rendererLoader";
+import { getRendererEntryUrl, loadRenderer } from "./rendererLoader";
+import { createSecureWebPreferences, hardenWindowNavigation } from "./windowSecurity";
+import { isWindowSender } from "./ipcSecurity";
+
+interface SelectionWindowEntry {
+  window: BrowserWindow;
+  displayId: number;
+}
 
 interface SelectionSession {
-  windows: BrowserWindow[];
+  entries: SelectionWindowEntry[];
   resolve: (result: SelectionResult) => void;
   settled: boolean;
 }
@@ -15,17 +23,28 @@ interface SelectionSession {
 let activeSession: SelectionSession | null = null;
 
 export function registerSelectionIpc(): void {
-  ipcMain.on("screenclip:selection-complete", (event, payload: SelectionCompletePayload) => {
-    completeSelection(BrowserWindow.fromWebContents(event.sender), payload);
+  ipcMain.on("screenclip:selection-complete", (event, payload: unknown) => {
+    const selectionWindow = getActiveSelectionWindow(event);
+    if (!selectionWindow) {
+      return;
+    }
+
+    try {
+      completeSelection(selectionWindow, assertSelectionRectangle(payload));
+    } catch {
+      return;
+    }
   });
 
-  ipcMain.on("screenclip:selection-cancel", () => {
-    cancelSelection();
+  ipcMain.on("screenclip:selection-cancel", (event) => {
+    if (getActiveSelectionWindow(event)) {
+      cancelActiveSelection();
+    }
   });
 }
 
 export async function selectRegion(): Promise<SelectionResult> {
-  cancelSelection();
+  cancelActiveSelection();
 
   return new Promise((resolve) => {
     const displays = screen.getAllDisplays();
@@ -34,48 +53,46 @@ export async function selectRegion(): Promise<SelectionResult> {
       return;
     }
 
-    const windows = displays.map((display) => {
+    const entries = displays.map((display) => {
       const overlay = createOverlayWindow(display);
-      void loadRenderer(overlay, { mode: "selection", displayId: String(display.id) }, is.dev);
-      return overlay;
+      const rendererQuery = { mode: "selection" };
+      hardenWindowNavigation(overlay, getRendererEntryUrl(rendererQuery, is.dev));
+      void loadRenderer(overlay, rendererQuery, is.dev);
+      return { window: overlay, displayId: display.id };
     });
 
-    activeSession = { windows, resolve, settled: false };
-    for (const window of windows) {
-      window.once("closed", handleSelectionWindowClosed);
+    activeSession = { entries, resolve, settled: false };
+    for (const entry of entries) {
+      entry.window.once("closed", handleSelectionWindowClosed);
     }
   });
 }
 
-function completeSelection(selectionWindow: BrowserWindow | null, payload: SelectionCompletePayload): void {
+function completeSelection(selectionWindow: BrowserWindow, rect: Rectangle): void {
   const session = activeSession;
   if (!session || session.settled) {
     return;
   }
 
-  if (!selectionWindow) {
-    settleSession({ ok: false, error: "未找到框选窗口，请重新选择。" });
-    return;
-  }
-
-  const display = screen.getAllDisplays().find((item) => item.id === payload.displayId);
+  const entry = session.entries.find((item) => item.window === selectionWindow);
+  const display = entry ? screen.getAllDisplays().find((item) => item.id === entry.displayId) : null;
   if (!display) {
     settleSession({ ok: false, error: "未找到框选区域所在的显示器，请重新选择。" });
     return;
   }
 
-  if (!hasUsableSelection(payload.rect)) {
+  if (!hasUsableSelection(rect)) {
     settleSession({ ok: false, cancelled: true, error: "选择区域太小，已取消。" });
     return;
   }
 
   const displayInfo = toDisplayInfo(display);
-  const localRect = translateOverlayRectToDisplayLocal(displayInfo, selectionWindow.getBounds(), payload.rect);
+  const localRect = translateOverlayRectToDisplayLocal(displayInfo, selectionWindow.getBounds(), rect);
   const region: CaptureRegion = buildCaptureRegion(displayInfo, localRect);
   settleSession({ ok: true, region });
 }
 
-function cancelSelection(): void {
+export function cancelActiveSelection(): void {
   if (!activeSession || activeSession.settled) {
     activeSession = null;
     return;
@@ -90,7 +107,7 @@ function handleSelectionWindowClosed(): void {
     return;
   }
 
-  if (session.windows.every((window) => window.isDestroyed())) {
+  if (session.entries.every((entry) => entry.window.isDestroyed())) {
     settleSession({ ok: false, cancelled: true, error: "区域选择窗口已关闭。" });
   }
 }
@@ -102,9 +119,9 @@ function settleSession(result: SelectionResult): void {
   }
 
   session.settled = true;
-  for (const window of session.windows) {
-    if (!window.isDestroyed()) {
-      window.close();
+  for (const entry of session.entries) {
+    if (!entry.window.isDestroyed()) {
+      entry.window.close();
     }
   }
   session.resolve(result);
@@ -128,12 +145,7 @@ function createOverlayWindow(display: Electron.Display): BrowserWindow {
     hasShadow: false,
     skipTaskbar: true,
     alwaysOnTop: true,
-    webPreferences: {
-      preload: join(__dirname, "../preload/index.js"),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false
-    }
+    webPreferences: createSecureWebPreferences(join(__dirname, "../preload/selection.js"))
   });
 
   window.setAlwaysOnTop(true, "screen-saver");
@@ -141,4 +153,13 @@ function createOverlayWindow(display: Electron.Display): BrowserWindow {
   window.focus();
 
   return window;
+}
+
+function getActiveSelectionWindow(event: Electron.IpcMainEvent): BrowserWindow | null {
+  const session = activeSession;
+  if (!session || session.settled) {
+    return null;
+  }
+
+  return session.entries.find((entry) => isWindowSender(event, entry.window))?.window ?? null;
 }
