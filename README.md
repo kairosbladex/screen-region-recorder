@@ -34,7 +34,9 @@ npm install
 Electron 二进制下载慢时可使用镜像：
 
 ```bash
-ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/' npm install
+ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/' \
+FFMPEG_BINARIES_URL='https://cdn.npmmirror.com/binaries/ffmpeg-static' \
+npm install
 ```
 
 ## 启动开发版
@@ -67,6 +69,9 @@ npm run verify
 - 1–10 秒时长约束
 - `Downloads/ScreenClips` 输出文件名和路径生成
 - 捕获会话释放、多屏源匹配、导出请求校验和输出路径安全
+- macOS 首次屏幕录制授权、录制流及时释放和导出期间并发锁
+- FFmpeg 失败时的原子输出与残留文件清理
+- 打包使用的 `ffmpeg-static` 对 GIF / MP4 / WebM 的真实转码
 - 区域选择拖拽的快速 pointer 事件边界
 
 ## 打包安装包
@@ -97,13 +102,18 @@ npm run dist:win
 仓库包含 `.github/workflows/build-installers.yml`。推送 `main` 或 `v*` tag 时自动在 macOS 和 Windows runner 上构建并上传安装包。推送 `v*` tag 时自动创建 GitHub Release：
 
 ```bash
+git switch main
+git pull --ff-only origin main
 npm version patch --no-git-tag-version
 git add package.json package-lock.json
 git commit -m "chore(release): bump version"
 VERSION=$(node -p "require('./package.json').version")
 git tag "v$VERSION"
-git push origin main "v$VERSION"
+git push origin main
+git push origin "v$VERSION"
 ```
+
+Release 工作流会拒绝版本号与 tag 不一致，或 tag 指向尚未进入默认分支的提交。
 
 ### macOS 签名说明
 

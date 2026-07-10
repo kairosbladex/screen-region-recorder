@@ -33,6 +33,7 @@ interface ActiveCapture {
   displayId: number;
   owner: CaptureOwner;
   restoreWindow: () => void;
+  windowRestored: boolean;
 }
 
 interface FinishedCapture {
@@ -74,7 +75,8 @@ export class CaptureCoordinator {
       sessionId,
       displayId,
       owner,
-      restoreWindow: windowControl.restore
+      restoreWindow: windowControl.restore,
+      windowRestored: false
     };
     this.lastFinished = null;
     return { sessionId };
@@ -98,6 +100,7 @@ export class CaptureCoordinator {
     if (active.phase !== "capturing") {
       throw new Error("录制会话状态无效。");
     }
+    this.restoreActiveWindow(active);
     active.phase = "exporting";
   }
 
@@ -139,6 +142,11 @@ export class CaptureCoordinator {
   finishOwner(webContentsId: number): boolean {
     if (!this.active || this.active.owner.webContentsId !== webContentsId) {
       return false;
+    }
+
+    if (this.active.phase === "exporting") {
+      this.restoreActiveWindow(this.active);
+      return true;
     }
 
     this.completeActive();
@@ -183,7 +191,16 @@ export class CaptureCoordinator {
       sessionId: active.sessionId,
       owner: active.owner
     };
+    this.restoreActiveWindow(active);
+  }
+
+  private restoreActiveWindow(active: ActiveCapture): void {
+    if (active.windowRestored) {
+      return;
+    }
+
     active.restoreWindow();
+    active.windowRestored = true;
   }
 }
 

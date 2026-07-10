@@ -25,11 +25,32 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+
+      - name: Validate release tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_tag="v$(node -p "require('./package.json').version")"
+          if [[ "$GITHUB_REF_NAME" != "$expected_tag" ]]; then
+            echo "Release tag $GITHUB_REF_NAME does not match package version $expected_tag" >&2
+            exit 1
+          fi
+
+          default_branch="${{ github.event.repository.default_branch }}"
+          git fetch --no-tags origin "+refs/heads/${default_branch}:refs/remotes/origin/${default_branch}"
+          tag_commit="$(git rev-list -n 1 "$GITHUB_REF_NAME")"
+          if ! git merge-base --is-ancestor "$tag_commit" "origin/${default_branch}"; then
+            echo "Release tag $GITHUB_REF_NAME points to a commit that is not on ${default_branch}" >&2
+            exit 1
+          fi
 
       - run: npm ci
 
@@ -62,7 +83,32 @@ jobs:
           trap 'hdiutil detach "$mount_dir"' EXIT
           app_path="$(find "$mount_dir" -maxdepth 1 -name '*.app' -print -quit)"
           codesign --verify --deep --strict --verbose=2 "$app_path"
-          test -x "$app_path/Contents/Resources/app.asar.unpacked/node_modules/ffmpeg-static/ffmpeg"
+          ffmpeg_path="$app_path/Contents/Resources/app.asar.unpacked/node_modules/ffmpeg-static/ffmpeg"
+          test -x "$ffmpeg_path"
+          "$ffmpeg_path" -version
+
+      - name: Verify Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem -Path dist -Filter '*.exe' | Select-Object -First 1
+          if (-not $installer) {
+            throw 'Windows installer was not created.'
+          }
+
+          $appPath = 'dist/win-unpacked/Screen Region Recorder.exe'
+          $ffmpegPath = 'dist/win-unpacked/resources/app.asar.unpacked/node_modules/ffmpeg-static/ffmpeg.exe'
+          if (-not (Test-Path $appPath -PathType Leaf)) {
+            throw "Packaged app executable is missing: $appPath"
+          }
+          if (-not (Test-Path $ffmpegPath -PathType Leaf)) {
+            throw "Packaged FFmpeg is missing: $ffmpegPath"
+          }
+
+          & $ffmpegPath -version
+          if ($LASTEXITCODE -ne 0) {
+            throw "Packaged FFmpeg failed with exit code $LASTEXITCODE"
+          }
 
       - uses: actions/upload-artifact@v4
         with:

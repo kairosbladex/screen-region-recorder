@@ -33,12 +33,25 @@ export function getScreenPermissionInfo(): PermissionInfo {
     };
   }
 
+  if (status === "not-determined" || status === "unknown") {
+    return {
+      platform: process.platform,
+      status,
+      canOpenSettings: true,
+      message: "首次录制时 macOS 会请求屏幕录制权限；请在系统提示中允许。"
+    };
+  }
+
   return {
     platform: process.platform,
     status,
     canOpenSettings: true,
     message: "macOS 尚未允许本应用录制屏幕。请在系统设置 > 隐私与安全性 > 屏幕录制 中允许本应用，授权后重启应用。"
   };
+}
+
+export function canAttemptScreenCapture(status: ScreenPermissionStatus): boolean {
+  return status !== "denied" && status !== "restricted";
 }
 
 export async function openScreenRecordingSettings(): Promise<void> {

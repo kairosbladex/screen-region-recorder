@@ -26,29 +26,18 @@ export async function recordSelectedRegion(options: RecordSelectionOptions): Pro
 
   try {
     const stream = await getDisplayStream();
-    try {
-      const track = stream.getVideoTracks()[0];
-      if (!track) {
-        throw new Error("捕获的屏幕流没有找到视频轨道。");
-      }
-      const capturedSize = getCapturedSize(track, options.region);
-      const blob = await recordStream(stream, options.durationSeconds, options.onProgress, options.onPhase);
-      options.onPhase("exporting");
-      const data = await blob.arrayBuffer();
+    const { blob, capturedSize } = await recordAndReleaseStream(stream, options);
+    options.onPhase("exporting");
+    const data = await blob.arrayBuffer();
 
-      return await window.screenClip.exportRecording({
-        sessionId,
-        data,
-        format: options.format,
-        durationSeconds: options.durationSeconds,
-        region: options.region,
-        capturedSize
-      });
-    } finally {
-      for (const mediaTrack of stream.getTracks()) {
-        mediaTrack.stop();
-      }
-    }
+    return await window.screenClip.exportRecording({
+      sessionId,
+      data,
+      format: options.format,
+      durationSeconds: options.durationSeconds,
+      region: options.region,
+      capturedSize
+    });
   } catch (error) {
     primaryError = error;
     throw error;
@@ -59,6 +48,26 @@ export async function recordSelectedRegion(options: RecordSelectionOptions): Pro
       if (primaryError === undefined) {
         throw cleanupError;
       }
+    }
+  }
+}
+
+async function recordAndReleaseStream(
+  stream: MediaStream,
+  options: Pick<RecordSelectionOptions, "region" | "durationSeconds" | "onProgress" | "onPhase">
+): Promise<{ blob: Blob; capturedSize: VideoSize }> {
+  try {
+    const track = stream.getVideoTracks()[0];
+    if (!track) {
+      throw new Error("捕获的屏幕流没有找到视频轨道。");
+    }
+
+    const capturedSize = getCapturedSize(track, options.region);
+    const blob = await recordStream(stream, options.durationSeconds, options.onProgress, options.onPhase);
+    return { blob, capturedSize };
+  } finally {
+    for (const mediaTrack of stream.getTracks()) {
+      mediaTrack.stop();
     }
   }
 }

@@ -19,6 +19,7 @@ describe("CaptureCoordinator", () => {
 
     coordinator.beginExport(owner, "session-1");
     expect(coordinator.getSnapshot()).toMatchObject({ phase: "exporting", sessionId: "session-1", displayId: 42 });
+    expect(restoreWindow).toHaveBeenCalledTimes(1);
 
     coordinator.finish(owner, "session-1");
     expect(coordinator.getSnapshot()).toEqual({ phase: "idle" });
@@ -72,6 +73,22 @@ describe("CaptureCoordinator", () => {
 
     expect(coordinator.finishOwner(owner.webContentsId)).toBe(true);
     expect(coordinator.finishOwner(owner.webContentsId)).toBe(false);
+    expect(coordinator.getSnapshot()).toEqual({ phase: "idle" });
+    expect(restoreWindow).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps an in-flight export reserved when its owner renderer is gone", () => {
+    const restoreWindow = vi.fn();
+    const coordinator = new CaptureCoordinator({ createSessionId: () => "session-1" });
+    coordinator.prepare(owner, 7, createWindowControl(restoreWindow));
+    coordinator.claimDisplayMedia(owner.frame);
+    coordinator.beginExport(owner, "session-1");
+
+    expect(coordinator.finishOwner(owner.webContentsId)).toBe(true);
+    expect(coordinator.getSnapshot()).toMatchObject({ phase: "exporting", sessionId: "session-1" });
+    expect(() => coordinator.prepare(owner, 8, createWindowControl())).toThrow("已有录制任务正在进行");
+
+    coordinator.finish(owner, "session-1");
     expect(coordinator.getSnapshot()).toEqual({ phase: "idle" });
     expect(restoreWindow).toHaveBeenCalledTimes(1);
   });

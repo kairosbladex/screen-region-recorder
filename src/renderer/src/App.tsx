@@ -90,7 +90,9 @@ export function App() {
   }
 
   const isMac = appInfo?.permission.platform === "darwin";
-  const permissionNeedsAction = isMac && appInfo.permission.status !== "granted";
+  const permissionWarning = isMac && appInfo.permission.status !== "granted";
+  const permissionNeedsSettings =
+    isMac && (appInfo.permission.status === "denied" || appInfo.permission.status === "restricted");
   const ffmpegMissing = appInfo?.ffmpeg.available === false;
   const ffmpegMessage = "导出组件不可用。请重新安装完整版本，或先在本机安装 FFmpeg 后重启应用。";
   const formatLabel: Record<string, string> = { gif: "GIF", mp4: "MP4", webm: "WebM" };
@@ -216,11 +218,11 @@ export function App() {
       <section className="diagnostics">
         {isMac ? (
           <DiagnosticItem
-            kind={permissionNeedsAction ? "warn" : "ok"}
+            kind={permissionWarning ? "warn" : "ok"}
             title="屏幕录制权限"
             text={appInfo?.permission.message ?? "正在检测权限。"}
             action={
-              permissionNeedsAction ? (
+              permissionNeedsSettings ? (
                 <button type="button" onClick={() => window.screenClip.openScreenSettings()}>
                   打开设置
                 </button>

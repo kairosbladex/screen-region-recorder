@@ -5,7 +5,7 @@ import ffmpegStaticPath from "ffmpeg-static";
 import { calculateCropFromCapturedVideo, normalizeCropForVideoCodec } from "../shared/coordinates";
 import type { CaptureRegion, ExportFormat, FfmpegInfo, VideoSize } from "../shared/types";
 
-interface TranscodeOptions {
+export interface TranscodeOptions {
   inputPath: string;
   outputPath: string;
   format: ExportFormat;
@@ -55,12 +55,16 @@ export async function transcodeRecording(options: TranscodeOptions): Promise<voi
     throw new Error(ffmpeg.message);
   }
 
+  await transcodeRecordingWithBinary(ffmpeg.path, options);
+}
+
+export function transcodeRecordingWithBinary(binaryPath: string, options: TranscodeOptions): Promise<void> {
   const crop = calculateCropFromCapturedVideo(options.region, options.capturedSize);
   const finalCrop = options.format === "gif" ? crop : normalizeCropForVideoCodec(crop, options.capturedSize);
   const cropFilter = `crop=${finalCrop.width}:${finalCrop.height}:${finalCrop.x}:${finalCrop.y}`;
   const args = createFfmpegArgs(options.inputPath, options.outputPath, options.format, cropFilter);
 
-  await runFfmpeg(ffmpeg.path, args);
+  return runFfmpeg(binaryPath, args);
 }
 
 function createFfmpegArgs(inputPath: string, outputPath: string, format: ExportFormat, cropFilter: string): string[] {

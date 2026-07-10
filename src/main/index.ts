@@ -1,17 +1,16 @@
 import { app, BrowserWindow, desktopCapturer, ipcMain, screen, session, shell } from "electron";
 import { is } from "@electron-toolkit/utils";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { tmpdir } from "node:os";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { pickCaptureSourceByDisplayId } from "../shared/captureSource";
-import { createOutputFilePath } from "../shared/outputPaths";
 import { isPathInsideDirectory } from "../shared/pathSafety";
 import type { AppInfo, CapturePreparation, ExportRecordingRequest, ExportRecordingResult } from "../shared/types";
 import { CaptureCoordinator, type CaptureOwner } from "./captureCoordinator";
 import { CaptureRequestController } from "./captureRequestController";
 import { createDisplayMediaRequestHandler } from "./displayMediaHandler";
 import { getFfmpegInfo, transcodeRecording } from "./ffmpeg";
-import { getScreenPermissionInfo, openScreenRecordingSettings } from "./permissions";
+import { canAttemptScreenCapture, getScreenPermissionInfo, openScreenRecordingSettings } from "./permissions";
+import { exportRecordingToFile } from "./recordingExporter";
 import { getRendererEntryUrl, loadRenderer } from "./rendererLoader";
 import { cancelActiveSelection, registerSelectionIpc, selectRegion } from "./selection";
 import { createSecureWebPreferences, hardenWindowNavigation } from "./windowSecurity";
@@ -94,7 +93,7 @@ function registerIpcHandlers(): void {
     }
 
     const permission = getScreenPermissionInfo();
-    if (permission.status !== "granted") {
+    if (!canAttemptScreenCapture(permission.status)) {
       throw new Error(permission.message);
     }
 
@@ -163,35 +162,10 @@ async function getAppInfo(): Promise<AppInfo> {
 }
 
 async function exportRecording(request: ExportRecordingRequest): Promise<ExportRecordingResult> {
-  const outputPath = createOutputFilePath(app.getPath("downloads"), new Date(), request.durationSeconds, request.format);
-  const outputDir = dirname(outputPath);
-  const tempDir = mkdtempSync(join(tmpdir(), "screen-region-recorder-"));
-  const inputPath = join(tempDir, "capture.webm");
-
-  try {
-    mkdirSync(outputDir, { recursive: true });
-    writeFileSync(inputPath, Buffer.from(new Uint8Array(request.data)));
-    await transcodeRecording({
-      inputPath,
-      outputPath,
-      format: request.format,
-      region: request.region,
-      capturedSize: request.capturedSize
-    });
-
-    return {
-      ok: true,
-      filePath: outputPath,
-      outputDir
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : String(error)
-    };
-  } finally {
-    rmSync(tempDir, { recursive: true, force: true });
-  }
+  return exportRecordingToFile(request, {
+    downloadsDir: app.getPath("downloads"),
+    transcode: transcodeRecording
+  });
 }
 
 async function getSourceForDisplay(displayId: number): Promise<Electron.DesktopCapturerSource | null> {

@@ -111,6 +111,33 @@ describe("recordSelectedRegion", () => {
     expect(stop).toHaveBeenCalledTimes(1);
   });
 
+  it("stops every capture track before waiting for export to finish", async () => {
+    vi.useFakeTimers();
+    const stop = vi.fn();
+    let resolveExport: ((result: { ok: true; filePath: string }) => void) | undefined;
+    const exportRecording = vi.fn(
+      () =>
+        new Promise<{ ok: true; filePath: string }>((resolve) => {
+          resolveExport = resolve;
+        })
+    );
+    installAdapters({
+      getDisplayMedia: vi.fn(async () => createStream(stop)),
+      finishCapture: vi.fn(async () => undefined),
+      exportRecording,
+      mediaRecorder: SuccessfulMediaRecorder
+    });
+
+    const recording = record();
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(exportRecording).toHaveBeenCalledTimes(1);
+    expect(stop).toHaveBeenCalledTimes(1);
+
+    resolveExport?.({ ok: true, filePath: "/tmp/clip.gif" });
+    await expect(recording).resolves.toEqual({ ok: true, filePath: "/tmp/clip.gif" });
+  });
+
   it("uses the full Retina display size when the video track omits dimensions", async () => {
     vi.useFakeTimers();
     const exportRecording = vi.fn(async () => ({ ok: true, filePath: "/tmp/clip.gif" }));
